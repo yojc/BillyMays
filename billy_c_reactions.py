@@ -123,7 +123,7 @@ async def f_rucha(client, message):
 	await message.channel.send("Ruchasz psa jak sra")
 
 f_rucha.command = r'\.\.\.'
-f_rucha.prob = 0.00675
+f_rucha.prob = 0.000675
 
 async def f_wulg(client, message):
 	responses = [
@@ -145,7 +145,7 @@ async def f_wulg(client, message):
 	await message.channel.send(random.choice(responses))
 
 f_wulg.command = r'(kurw|chuj|pierdol|pierdal|jeb)'
-f_wulg.prob = 0.00675
+f_wulg.prob = 0.000675
 
 async def f_witam(client, message):
 	responses = [
@@ -230,6 +230,12 @@ async def f_zabenya(client, message):
 
 f_zabenya.command = r"^a{3,}$"
 f_zabenya.prob = 0.1
+
+async def f_marek(client, message):
+	await message.channel.send("MAREK")
+
+f_marek.command = r'^e{3,}$'
+f_marek.prob = 1.0
 
 
 #@asyncio.coroutine

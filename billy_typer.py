@@ -13,6 +13,8 @@ current_cup = None
 current_group = None
 
 def group_sorter_comparator(a, b):
+	global teams
+
 	to_compare = ["Pts", "GD", "GF", "W"]
 
 	for stat in to_compare:
@@ -21,13 +23,12 @@ def group_sorter_comparator(a, b):
 		elif current_group[a][stat] < current_group[b][stat]:
 			return 1
 	
-	current_cup_teams = cups[current_cup]["teams"]
-	extra_coeff_count = min(len(current_cup_teams[a]["extra_coeff"]), len(current_cup_teams[b]["extra_coeff"]))
+	extra_coeff_count = min(len(teams[a]["extra_coeff"]), len(teams[b]["extra_coeff"]))
 
 	for i in range(0, extra_coeff_count):
-		if current_cup_teams[a]["extra_coeff"][i] > current_cup_teams[b]["extra_coeff"][i]:
+		if teams[a]["extra_coeff"][i] > teams[b]["extra_coeff"][i]:
 			return -1
-		elif current_cup_teams[a]["extra_coeff"][i] < current_cup_teams[b]["extra_coeff"][i]:
+		elif teams[a]["extra_coeff"][i] < teams[b]["extra_coeff"][i]:
 			return 1
 	
 	return 0
@@ -80,6 +81,8 @@ def generate_penalty_count():
 	return result
 
 def generate_match_result(host, guest, overtime=False, penalties=True, knockout=False):
+	global teams
+
 	was_overtime = False
 	penalties_result = False
 
@@ -94,8 +97,10 @@ def generate_match_result(host, guest, overtime=False, penalties=True, knockout=
 			result["loser"] = host
 	
 	def format_name(name, full=False):
-		if full:
-			return_name = cups[current_cup]["teams"][name]["name"]
+		if not current_cup or not teams[name]:
+			return_name = name.title()
+		elif full:
+			return_name = teams[name]["name"]
 		else:
 			return_name = name.upper()
 
@@ -163,19 +168,33 @@ def generate_match_result(host, guest, overtime=False, penalties=True, knockout=
 def generate_groups():
 	global groups
 	global matches
+	global playoff_winners
+	global teams
 
 	groups = {}
 	matches = {}
 	matches["group"] = {}
 
-	for team_id in cups[current_cup]["teams"]:
-		team = cups[current_cup]["teams"][team_id]
-		sh.debug("Processing team: " + team["name"])
+	positions = {}
 
-		if team["group"] not in groups:
-			sh.debug("Creating group: " + team["group"])
-			groups[team["group"]] = {}
-			matches["group"][team["group"]] = []
+	if cups[current_cup]["playoffs"]:
+		sh.debug("Processing playoffs")
+
+		for playoff in cups[current_cup]["teams_playoffs"]:
+			winner = random.choice(list(playoff["teams"].keys()))
+			playoff_winners.append(playoff["teams"][winner]["name"])
+			teams[winner] = playoff["teams"][winner]
+			positions[winner] = playoff["place"]
+
+	for team_id in teams:
+		team_data = teams[team_id]
+
+		sh.debug("Processing team: " + team_data["name"])
+
+		if team_data["group"] not in groups:
+			sh.debug("Creating group: " + team_data["group"])
+			groups[team_data["group"]] = {}
+			matches["group"][team_data["group"]] = []
 		
 		stats = {
 			"Pld": 0,
@@ -188,7 +207,28 @@ def generate_groups():
 			"Pts": 0
 		}
 		
-		groups[team["group"]][team_id] = stats
+		if team_id in positions:
+			sh.debug("Placing {} at position {}{}".format(team_id, team_data["group"], positions[team_id]))
+			position = positions[team_id]
+			new_group_data = {}
+
+			for key, value in groups[team_data["group"]].items():
+				position = position-1
+
+				if position == 0:
+					new_group_data[team_id] = stats
+
+				new_group_data[key] = value
+			
+			if position == 1:
+				new_group_data[team_id] = stats
+			
+			groups[team_data["group"]] = new_group_data
+		else:
+			groups[team_data["group"]][team_id] = stats
+		
+	#sh.debug(groups)
+
 
 def generate_group_matches():
 	global current_group
@@ -262,7 +302,8 @@ def generate_knockout_teams():
 
 	knockout = []
 
-	third_teams = groups["3rd"].copy()
+	if (cups[current_cup]["third_place_qual"] is True):
+		third_teams = groups["3rd"].copy()
 
 	def get_team(code):
 		if code == "3":
@@ -285,14 +326,24 @@ def generate_knockout_teams():
 
 def generate_knockout():
 	global cups
+	global current_cup
 	global knockout
 	global matches
 
 	matches["knockout"] = {}
 
+	playing_finals = False
+	third_place_match = cups[current_cup]["third_place_match"]
+
 	while len(knockout) > 0:
-		round_name = str(len(knockout))
-		sh.debug("Playing knockout stage 1/{}".format(str(len(knockout))))
+		if (not playing_finals):
+			round_name = str(len(knockout))
+			sh.debug("Playing knockout stage 1/{}".format(round_name))
+		else:
+			round_name = "3" if third_place_match == True else "1"
+			matches["knockout"]["1"] = []
+			sh.debug("Playing finals, stage {}".format(round_name))
+		
 		next_step = []
 		next_host = True
 
@@ -302,7 +353,22 @@ def generate_knockout():
 			result = generate_match_result(match["host"], match["guest"], knockout=True, overtime=True)
 			matches["knockout"][round_name].append(result["string"])
 
-			if (round_name != "1"):
+			if (third_place_match and round_name == "2"):
+				if next_host:
+					next_host = False
+					next_step.append({
+						"host": result["loser"],
+						"guest": None
+					})
+					next_step.append({
+						"host": result["winner"],
+						"guest": None
+					})
+				else:
+					next_host = True
+					next_step[-2]["guest"] = result["loser"]
+					next_step[-1]["guest"] = result["winner"]
+			elif (round_name != "1" and round_name != "3"):
 				if next_host:
 					next_host = False
 					next_step.append({
@@ -314,13 +380,19 @@ def generate_knockout():
 					next_step[-1]["guest"] = result["winner"]
 			else:
 				matches["final"] = result["string_full"]
+
+			if round_name == "3":
+				round_name = "1"
 		
+		playing_finals = (round_name == "2")
+
 		knockout = next_step
 
 # Output
 
 def output_group(group):
 	global groups
+	global teams
 
 	if group != "3rd":
 		ret = "Grupa " + group + ":\n"
@@ -332,7 +404,7 @@ def output_group(group):
 		for stat in groups[group][team_id]:
 			ret += str(groups[group][team_id][stat]).rjust(3, " ") + " "
 		
-		ret += cups[current_cup]["teams"][team_id]["name"] + "\n"
+		ret += teams[team_id]["name"] + "\n"
 	
 	return ret[:-1] + "```"
 
@@ -350,10 +422,14 @@ def output_knockout_matches():
 	global matches
 
 	ret = ""
+	ret_3rd = ""
+	ret_final = ""
 
 	for step in matches["knockout"]:
 		if step == "1":
-			ret += "\nFINAŁ:\n"
+			ret_final += "\nFINAŁ:\n"
+		elif step == "3":
+			ret_3rd += "\nMecz o 3 miejsce:\n"
 		elif step == "2":
 			ret += "\nPółfinały:\n"
 		elif step == "4":
@@ -362,28 +438,41 @@ def output_knockout_matches():
 			ret += "\nFaza 1/{}:\n".format(step)
 		
 		for match in matches["knockout"][step]:
-			ret += "`" + match + "`\n"
+			if step == "1":
+				ret_final += "`{}`\n".format(match)
+			elif step == "3":
+				ret_3rd += "`{}`\n".format(match)
+			else:
+				ret += "`{}`\n".format(match)
 
-	return ret[:-1]
+	return (ret + ret_3rd + ret_final)[:-1]
 
 # Public
 
 def generate_cup(given_cup):
 	global cups
 	global current_cup
+	global playoff_winners
+	global teams
 
 	current_cup = None
 
 	for cup in cups:
-		if re.match(cups[cup]["regex"], given_cup, re.IGNORECASE):
+		if re.search(cups[cup]["regex"], given_cup, re.IGNORECASE):
 			current_cup = cup
 	
 	if not current_cup:
 		return "Nie znaleziono podanych rozgrywek."
 	
+	playoff_winners = []
+	teams = cups[current_cup]["teams"].copy()
+
 	generate_groups()
 	generate_group_matches()
-	generate_third_places()
+
+	if (cups[current_cup]["third_place_qual"] is True):
+		generate_third_places()
+
 	generate_knockout_teams()
 	generate_knockout()
 
@@ -394,6 +483,9 @@ def output_cup():
 		"final": None,
 	}
 
+	if len(playoff_winners) > 0:
+		ret["group"] += "Zwycięzcy baraży: {}\n\n".format(", ".join(playoff_winners))
+
 	for group_id in groups:
 		if group_id == "3rd":
 			continue
@@ -401,9 +493,23 @@ def output_cup():
 		ret["group"] += output_group(group_id) + "\n"
 		ret["group"] += output_group_matches(group_id) + "\n"
 	
-	ret["knockout"] = output_group("3rd")
+	
+	if (cups[current_cup]["third_place_qual"] is True):
+		ret["knockout"] = output_group("3rd")
+	else:
+		ret["knockout"] = ""
+
 	ret["knockout"] += output_knockout_matches()
 
 	ret["final"] = matches["final"]
 
 	return ret
+
+def type_single_match(host, guest, overtime=False):
+	global current_cup
+	global current_group
+
+	current_cup = None
+	current_group = None
+
+	return generate_match_result(host, guest, overtime)["string"]

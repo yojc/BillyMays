@@ -79,11 +79,40 @@ async def setup(client):
 				for oldtime in oldtimes:
 					sh.debug("Found a reminder to execute from timestamp {}".format(oldtime))
 					for (channel, nick, message) in client.rdb[oldtime]:
+						sh.debug("Destination channel: {}".format(channel))
 						dest_channel = client.get_channel(int(channel))
 
 						if not dest_channel:
 							sh.warn("Reminder channel not found! {}".format(channel), date=True)
-							continue
+
+							dest_user_id = re.search("\d+", nick)
+
+							if (dest_user_id and dest_user_id.group(0)):
+								dest_user_id = int(dest_user_id.group(0))
+								sh.debug("Destination user ID: {}".format(dest_user_id))
+							else:
+								sh.warn("Could not determine user ID from mention! {}".format(nick), date=True)
+
+							# Maybe it's a DM reminder?
+							try:
+								sh.debug("Calling get_user...")
+								dest_user = client.get_user(int(dest_user_id))
+							except Exception:
+								sh.warn("Reminder user not found (get_user failed)! {}".format(nick), date=True)
+								continue
+
+							if not dest_user:
+								sh.warn("Reminder user not found (dest_user is None)! {}, {}".format(nick), date=True)
+								continue
+							
+							dest_channel = dest_user.dm_channel
+
+							if not dest_channel:
+								sh.debug("dm_channel is None! Creating DM...")
+								dest_channel = await dest_user.create_dm()
+
+								if not dest_channel:
+									sh.warn("create_dm falied! This reminder was aborted")
 
 						if message:
 							await dest_channel.send("[przypomnienie] {}: {}".format(nick, message))
@@ -187,10 +216,10 @@ periods = '|'.join(scaling.keys())
 async def c_remind(client, message_obj):
 	"""Gives you a reminder in the given amount of time."""
 	if not sh.get_args(message_obj):
-		#await message_obj.reply("no i?")
+		#await message_obj.reply("No i?")
 		return NOLIMIT
 	if len(sh.get_args(message_obj).split(" ")) < 2:
-		await message_obj.reply("ale o czym mam przypomnieć?")
+		await message_obj.reply("Ale o czym mam przypomnieć?")
 		return NOLIMIT
 	duration = 0
 	message = filter(None, re.split('(\d+(?:\.\d+)? ?(?:(?i)' + periods + ')) ?',
@@ -207,7 +236,7 @@ async def c_remind(client, message_obj):
 			reminder = reminder + piece
 			stop = True
 	if duration == 0:
-		await message_obj.reply("chyba zły format, może nie podano liczby (np. .za 1 dzień ...)")
+		await message_obj.reply("Chyba zły format, może nie podano liczby (np. .za 1 dzień ...)")
 		return
 
 	if duration % 1:
@@ -231,15 +260,15 @@ async def c_at(client, message_obj):
 	http://sopel.chat/tz . The seconds and timezone are optional.
 	"""
 	if not sh.get_args(message_obj):
-		await message_obj.reply("no i?")
+		await message_obj.reply("No i?")
 		return NOLIMIT
 	if len(sh.get_args(message_obj).split(" ")) < 2:
-		await message_obj.reply("ale o czym mam przypomnieć?")
+		await message_obj.reply("Ale o czym mam przypomnieć?")
 		return NOLIMIT
 	regex = re.compile(r'(?:(\d{4})-(\d{1,2})-(\d{1,2}) )?(\d+):(\d+)(?::(\d+))?([^\s\d]+)? (.*)')
 	match = regex.match(sh.get_args(message_obj))
 	if not match:
-		await message_obj.reply("chyba zły format daty/godziny (HH:MM lub HH:MM:SS, opcjonalnie z datą: RRRR-MM-DD HH:MM)")
+		await message_obj.reply("Chyba zły format daty/godziny (HH:MM lub HH:MM:SS, opcjonalnie z datą: RRRR-MM-DD HH:MM)")
 		return NOLIMIT
 	year, month, day, hour, minute, second, tz, message = match.groups()
 	if not second:
@@ -257,7 +286,7 @@ async def c_at(client, message_obj):
 		# timediff = at_time - now
 	# else:
 	if tz and tz.upper() != 'UTC':
-		await message_obj.reply("nie znam się na strefach czasowych.")
+		await message_obj.reply("Nie znam się na strefach czasowych.")
 		return NOLIMIT
 	now = datetime.now()
 	
@@ -280,7 +309,7 @@ async def c_at(client, message_obj):
 		if duration < 0:
 			raise Exception()
 	except:
-		await message_obj.reply("coś mi się nie podoba ta data/godzina.")
+		await message_obj.reply("Coś mi się nie podoba ta data/godzina.")
 		return
 	
 	await create_reminder(client, message_obj, duration, message, 'UTC')
@@ -293,6 +322,9 @@ c_at.desc = "Przypomnij o..."
 async def create_reminder(client, message_obj, duration, message, tz):
 	t = int(time.time()) + duration
 	reminder = (message_obj.channel.id, message_obj.author.mention, message)
+
+	sh.debug("Reminder created for user {} ({}) on channel {}".format(message_obj.author.id, message_obj.author.mention, message_obj.channel.id))
+
 	try:
 		client.rdb[t].append(reminder)
 	except KeyError:

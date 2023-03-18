@@ -5,6 +5,8 @@
 BOT_PREFIX = r"^[;!\.,\/\\\\]"
 BOT_OWNERS = [307949259658100736]
 
+MESSAGE_LENGTH_LIMIT = 2000
+
 # ----------
 # Antiflood
 # ----------
@@ -22,6 +24,32 @@ ANTIFLOOD_CHANNELS_FULLTEXT = [318733700160290826, 174449535811190785, 316323075
 # Channels that have antiflood control deactivated.
 # japabocie, japa_bocie, sesje_rpg, sun_world, kanau_fela
 ANTIFLOOD_CHANNELS_UNLIMITED = [316323075622961152, 319056762814595076, 386148571529084929, 174541542923436032, 539154754631106584, 232881423604776960]
+
+# ----------
+# Web requests
+# ----------
+
+REQUESTS_RETRY_COUNT = 3
+REQUESTS_TIMEOUT = 12.05
+REQUESTS_TRANSLATE_TIMEOUT = 24.05
+
+REQUESTS_HEADERS = {
+	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
+	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+	'Accept-Language': 'en-US,en;q=0.5',
+	'Accept-Encoding': 'gzip, deflate',
+	'DNT': '1',
+	'Connection': 'keep-alive',
+	'Upgrade-Insecure-Requests': '1'
+}
+
+# Will always dump Google request reply to file.
+# Always on in developer mode, regardless of this setting
+REQUESTS_DUMP_GOOGLE_TO_FILE = False
+
+# Will always dump YouTube request reply to file.
+# Always on in developer mode, regardless of this setting
+REQUESTS_DUMP_YOUTUBE_TO_FILE = False
 
 # ----------
 # Reminders
@@ -53,6 +81,36 @@ STATS_CHANNELS_MORE_RESULTS_COUNT = 15
 
 ROLES_DB_FILENAME = "billy_db_roles.db"
 
-# Lots of crap gets written to the console, don't enable unless you need it.
-# Work only in debug/dev mode.
-ROLES_DEBUG = False
+# ----------
+# Twitch
+# ----------
+
+# How many minutes between stream checks?
+TWITCH_CHECK_FREQUENCY = 1
+
+# No notification will be sent right after restarting the bot, for this amount of minutes.
+# This should prevent another notification if the bot happens to restart when the channel is live.
+TWITCH_BOT_START_TIMEOUT = 5
+
+# The channel must be offline for at least this amount of minutes for the notification to be sent again.
+TWITCH_ANNOUNCEMENT_COOLDOWN = 19.5
+
+# ----------
+# File outputter
+# ----------
+
+OUTPUTTER_FILENAMES = ["billy_output.txt", "/home/pi/steamgifts/output.txt"]
+
+# ----------
+# Misc debug stuff
+# Enabling these will increase the amount of crap written to the console.
+# ----------
+
+# Prints all attributes that changed when on_member_update event occurs.
+DEBUG_MEMBER_UPDATE = False
+
+# Prints extra message info when on_message_delete event occurs.
+DEBUG_MESSAGE_DELETION = False
+
+# Lists all roles for all users on all available servers.
+DEBUG_ROLES = False

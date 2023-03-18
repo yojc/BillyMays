@@ -62,8 +62,11 @@ def is_json(myjson):
 def file_path(file):
 	return os.path.dirname(os.path.abspath(__file__)) + os.path.sep + file
 
-def dump_errlog(content):
+def dump_errlog(content, suffix=None):
 	logfilename = time.strftime("%Y-%m-%d_%H-%M-%S.txt")
+	if suffix:
+		logfilename += "_" + suffix
+		
 	with io.open(file_path("errlog" + os.path.sep + logfilename), "w", encoding="utf-8") as logfile:
 		logfile.write(content)
 	
@@ -161,8 +164,8 @@ def get_args(msg, clean = False):
 	tmp = rm_leading_quotes(msg, clean).split(None, 1)
 	if len(tmp) > 1:
 		return tmp[1].strip()
-	else:
-		return ""
+	
+	return ""
 
 def get_command(msg):
 	msg_strip = rm_leading_quotes(msg)[1:]

@@ -475,9 +475,9 @@ c_memberlist.command = r"members"
 
 async def c_czy(client, message):
 	response = ""
-	responses_yes = ["Tak", "Tak", "Na pewno", "Jeszcze się pytasz?", "Tak (no homo)", "Zaiste", "Teraz już tak", "A czy papież sra w lesie?", "Jak najbardziej", "Jeszcze jak", "Jest możliwe", "Owszem", "Czemu nie", "No w sumie...", "Nom", "W rzeczy samej", "Na bank", "Skoro tak mówisz, to nie będę zaprzeczał"]
-	responses_no = ["Nie", "Nie", "To mało prawdopodobne", "Nie sądzę", "Tak (żartuję, hehe)", "No chyba cię pambuk opuścił", "Raczej nie", "Jeszcze nie", "Gówno prawda", "Otóż nie", "Niep", "Akurat", "Nawet o tym nie myśl", "Bynajmniej", "Co ty gadasz", "Chyba ty"]
-	responses_dunno = ["Nie wiem", "Być może", "Hehe))))))))))))))))))", "Może kiedyś", "Jeszcze nie wiem", "Daj mi chwilę to się zastanowię", "Nie wiem, spytaj {}".format(get_random_nickname(message, "genitive")), "Tego nawet najstarsi górale nie wiedzą", "A jebnąć ci ciupaską?", "A co ja jestem, informacja turystyczna?"]
+	responses_yes = ["Tak", "Tak", "Na pewno", "Jeszcze się pytasz?", "Tak (no homo)", "Zaiste", "Teraz już tak", "A czy papież sra w lesie?", "Jak najbardziej", "Jeszcze jak", "Jest możliwe", "Owszem", "Czemu nie", "No w sumie...", "Nom", "W rzeczy samej", "Na bank", "Skoro tak mówisz, to nie będę zaprzeczał", "Tak jest", "No jaha", "Oczywiście", "To chyba oczywiste", "No... tak"]
+	responses_no = ["Nie", "Nie", "To mało prawdopodobne", "Nie sądzę", "Tak (żartuję, hehe)", "No chyba cię pambuk opuścił", "Raczej nie", "Jeszcze nie", "Gówno prawda", "Otóż nie", "Niep", "Akurat", "Nawet o tym nie myśl", "Bynajmniej", "Co ty gadasz", "Chyba ty", "A dupa tam", "No chyba nie"]
+	responses_dunno = ["Nie wiem", "Być może", "Hehe))))))))))))))))))", "Może kiedyś", "Jeszcze nie wiem", "Daj mi chwilę to się zastanowię", "Nie wiem, spytaj {}".format(get_random_nickname(message, "genitive")), "Tego nawet najstarsi górale nie wiedzą", "A jebnąć ci ciupaską?", "A co ja jestem, informacja turystyczna?", "Odmawiam odpowiedzi na to pytanie", "Nie wypowiem się bez mojego adwokata", "A skąd mam wiedzieć?"]
 
 	if sh.is_female(message):
 		responses_yes = responses_yes + ["Tak jest pani kapitan", "Trafiłaś w sedno"]
@@ -502,7 +502,7 @@ c_czy.params = ["zapytanie"]
 
 async def c_ile(client, message):
 	if random.randint(0,50) < 1:
-		replies = ["Fafnaście", "Szyberdzieści brlndpięć", "Czypiendziesiont", "Pisiont", "Mniej niz zero", "Tyle ile Pudzian bierze na klatę jak ma dobry dzień", "Sto tysięcy milionów"]
+		replies = ["Fafnaście", "Szyberdzieści brlndpięć", "Czypiendziesiont", "Pisiont", "Mniej niż zero", "Tyle ile Pudzian bierze na klatę jak ma dobry dzień", "Sto tysięcy milionów", "Miliard", "Dwajścia pięć", "Trzy razy sześć czyli osiemnaście"]
 		await message.reply(random.choice(replies))
 	else:
 		zeros = random.randint(1,4)
@@ -549,8 +549,8 @@ c_abcd.command = r"abcd"
 # -------------------------------------
 
 async def c_gdzie(client, message):
-	prefix = ["Pod mostem", "W dupie", "Na głowie", "Na kompie", "W parafii", "W koszu", "W fapfolderze", "Na rowerze", "Na penisie", "W Hondzie", "W portfelu", "W czipsach", "W brodzie Gofra"]
-	suffix = [get_random_nickname(message, "genitive"), "na wydziale elektrycznym", "w Kathowicach", "w Sosnowcu", "u Kath w piwnicy", "we Wrocławiu", "w Szczecinie", "w Brwinowie", "w Warszawie", "w Bogatyni", "w Golubiu-Dobrzynie", "w Rzeszowie", "w Krakowie", "w Bydgoszczy", "w Magdalence przy stole z pozostałymi zdrajcami", "tam gdzie stało ZOMO", "na serwerze Interii", "w Gołodupczynie", "w kinie w Berlinie", "w redakcji CD-Action", "naprawdę mnie kusi żeby napisać \"w dupie\"", "w bagażniku Hondy nevki", "w Pendolino", "za górami, za lasami, za siedmioma dolinami...", "w bagnie Shreka", "w telezakupach Mango"]
+	prefix = ["Pod mostem", "W dupie", "Na głowie", "Na kompie", "W parafii", "W koszu", "W fapfolderze", "Na rowerze", "Na penisie", "W Hondzie", "W portfelu", "W czipsach", "W brodzie Gofra", "na banknocie dwudziestozłotowym"]
+	suffix = [get_random_nickname(message, "genitive"), "na wydziale elektrycznym", "w Kathowicach", "w Sosnowcu", "u Kath w piwnicy", "we Wrocławiu", "w Szczecinie", "w Brwinowie", "w Warszawie", "w Bogatyni", "w Golubiu-Dobrzynie", "w Rzeszowie", "w Krakowie", "w Bydgoszczy", "w Magdalence przy stole z pozostałymi zdrajcami", "tam gdzie stało ZOMO", "na serwerze Interii", "w Gołodupczynie", "w kinie w Berlinie", "w redakcji CD-Action", "naprawdę mnie kusi żeby napisać \"w dupie\"", "w bagażniku Hondy nevki", "w Pendolino", "za górami, za lasami, za siedmioma dolinami...", "w bagnie Shreka", "w telezakupach Mango", "na Bartyckiej 24", "pod Pałacem Kultury", "w biedaszybie", "na Marsie"]
 	await message.reply(random.choice(prefix) + " " + random.choice(suffix))
 
 c_gdzie.command = r"gdzie"
@@ -558,7 +558,7 @@ c_gdzie.params = ["zapytanie"]
 
 async def c_kiedy(client, message):
 	random_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time() + random.randint(3600, 31622400)))
-	replies = ["O wpół do dziesiątej rano w Polsce", "Wczoraj", "Jutro", "Jak przyjdą szwedy", "W trzy dni po premierze Duke Nukem Forever 2", "Dzień przed końcem świata", "Nigdy", "Jak dojdą pieniądze", "Za godzinkę", "Kiedy tylko sobie życzysz", "Gdy przestaniesz zadawać debilne pytania", "Jak wybiorą czarnego papieża", "Już za cztery lata, już za cztery lata", "Na sylwestrze u P_aula", "O 3:33", "O 21:37", "Jak Kath napisze magisterkę", "Jak Dracia zrobi wszystko co musi kiedyś zrobić", "Jak KatajNapsika wróci na Discorda", "Jak Paul wejdzie do platyny", "Jak Fel znowu zgrubnie", "Gdy Aiden zgoli rude kudły", "Dzień po wybuchowym debiucie Brylanta", "Za 12 lat", "Gdy Martius przestanie pierdolić o ptakach", "Jak podbiel zje mi dupę", "A co ja jestem, informacja turystyczna?", "Jak wreszcie wyjebiemy stąd Nargoga", "Jak Debiru awansuje do seniora", "Jak kanau_fela zamknie FBI", "Już tej nocy w twoim łóżku", "Jak Strejlau umrze bo jest stary", "Nie", "Jak się skończy pandemia", "Jak Kataj skończy 12 lat", random_date]
+	replies = ["O wpół do dziesiątej rano w Polsce", "Wczoraj", "Jutro", "Jak przyjdą szwedy", "W trzy dni po premierze Duke Nukem Forever 2", "Dzień przed końcem świata", "Nigdy", "Jak dojdą pieniądze", "Za godzinkę", "Kiedy tylko sobie życzysz", "Gdy przestaniesz zadawać debilne pytania", "Jak wybiorą czarnego papieża", "Już za cztery lata, już za cztery lata", "Na sylwestrze u P_aula", "O 3:33", "O 21:37", "Jak Kath napisze magisterkę", "Jak Dracia zrobi wszystko co musi kiedyś zrobić", "Jak KatajNapsika wróci na Discorda", "Jak Paul wejdzie do platyny", "Jak Fel znowu zgrubnie", "Gdy Aiden zgoli rude kudły", "Dzień po wybuchowym debiucie Brylanta", "Za 12 lat", "Gdy Martius przestanie pierdolić o ptakach", "Jak podbiel zje mi dupę", "A co ja jestem, informacja turystyczna?", "Jak wreszcie wyjebiemy stąd Nargoga", "Jak Debiru awansuje do seniora", "Jak kanau_fela zamknie FBI", "Już tej nocy w twoim łóżku", "Jak Strejlau umrze bo jest stary", "Nie", "Jak się skończy pandemia", "Jak Kataj skończy 12 lat", "Jak yojec wróci z roweru", random_date]
 	
 	if sh.is_female(message):
 		replies = replies + ["Gdy wreszcie znajdziesz chłopaka"]
@@ -569,6 +569,32 @@ async def c_kiedy(client, message):
 
 c_kiedy.command = r"kiedy"
 c_kiedy.params = ["zapytanie"]
+
+async def c_datagodzina(client, message):
+	time_format = "%Y-%m-%d %H:%M"
+	command = unidecode.unidecode(sh.get_command(message))
+
+	if command == "dzien":
+		time_format = "%Y-%m-%d"
+	elif command == "miesiac":
+		time_format = "%Y-%m"
+	elif command == "rok":
+		time_format = "%Y"
+	elif command == "godzina":
+		time_format = "%H:%M"
+	
+	future_time = time.localtime(time.time() + random.randint(3600, 94867200))
+	random_date = time.strftime(time_format, future_time)
+
+	if time_format.endswith("%H:%M") and re.search(r"(bark|papaj|papiez|papierz|jan.{0,3} paw|rzult)", unidecode.unidecode(sh.get_args(message)), re.IGNORECASE):
+		random_date = random_date[:-5] + "21:37"
+	elif time_format == "%Y":
+		random_date = random.randint(int(random_date), 2050)
+	
+	await message.reply(random_date)
+
+c_datagodzina.command = r"(data|godzina|dzien|miesiac|rok)"
+c_datagodzina.params = ["zapytanie"]
 
 async def c_kto(client, message):
 	await message.reply(get_random_nickname(message, "nominative"))

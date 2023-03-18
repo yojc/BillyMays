@@ -5,6 +5,7 @@ python_modules = [
 	"platform",
 	
 	"sys",
+	"traceback",
 	"argparse",
 	"random",
 	"re",
@@ -47,13 +48,14 @@ elif NOSTATS_MODE and STATS_MODE:
 # App keys
 from keys import BILLY_KEY
 
-from config import BOT_OWNERS, BOT_PREFIX
+from config import BOT_OWNERS, BOT_PREFIX, DEBUG_MEMBER_UPDATE, DEBUG_MESSAGE_DELETION
 
 # Shared functions
 
 import billy_antiflood as af
 import billy_shared as sh
-#import billy_roles as roles
+# import billy_roles as roles
+roles = None
 
 if DEV_MODE or DEBUG_MODE:
 	sh.set_debug_flag()
@@ -314,13 +316,17 @@ async def parse_message(message, edited=False):
 						if not (NOSTATS_MODE or DEV_MODE):
 							billy_c_stats.update_msg_function(message, f.__name__)
 					except Exception as e:
+						traceback_msg = traceback.format_exc().split("\n",1)[1]
 						reply_msg = "Oho, chyba coś się zepsuło."
 
 						if BOT_OWNERS and BOT_OWNERS[0] and message.guild and message.guild.get_member(BOT_OWNERS[0]):
 							yojec_action = ["się skończy bawić pociągami", "wyłączy w końcu Bordery", "skończy magisterkę", "wróci z rowerowej wycieczki", "mu się zachce albo i nie"]
 							reply_msg += " <@{}> to kiedyś naprawi, jak {}.".format(BOT_OWNERS[0], random.choice(yojec_action))
+							await message.reply(reply_msg + "\n```{}```".format(traceback_msg))
+						else:
+							# await message.reply(reply_msg + "\n```{}: {}\n{}```".format(type(e).__name__, str(e)))
+							await message.reply(reply_msg + "\n```{}```".format(traceback_msg))
 
-						await message.reply(reply_msg + "\n```{}```".format(str(e)))
 						sh.warn("An error occured in " + f.__name__ + "!!! (" + content + ")")
 						raise
 						continue
@@ -356,14 +362,14 @@ print("--------")
 async def on_ready():
 	global sopel_reminder_setup
 	
-	print('Logged in as '+client.user.name+' (ID:'+str(client.user.id)+') | Connected to '+str(len(client.guilds))+' servers | Connected to '+str(len(set(client.get_all_members())))+' users')
-	print('Connection datetime: ' + str(datetime.datetime.now()))
-	print('--------')
-	sh.debug('Current Discord.py Version: {} | Current Python Version: {}'.format(discord.__version__, platform.python_version()))
-	sh.debug('--------')
-	#print('Use this link to invite {}:'.format(client.user.name))
-	#print('https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=8'.format(client.user.id))
-	#print('--------')
+	print("Logged in as {} (ID: {}) | Connected to {} servers and {} users".format(client.user.name, client.user.id, len(client.guilds), len(set(client.get_all_members()))))
+	print("Connection datetime: " + str(datetime.datetime.now()))
+	print("--------")
+	sh.debug("Current Discord.py Version: {} | Current Python Version: {}".format(discord.__version__, platform.python_version()))
+	sh.debug("--------")
+	#print("Use this link to invite {}:".format(client.user.name))
+	#print("https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=8".format(client.user.id))
+	#print("--------")
 	
 	if not (DEV_MODE or STATS_MODE) and not sopel_reminder_setup:
 		sh.debug("### CREATED REMINDER TASKS " + str(datetime.datetime.now()))
@@ -373,13 +379,11 @@ async def on_ready():
 		sh.debug("### REMINDERS DISABLED IN DEVELOPER MODE")
 	else:
 		sh.debug("### REMINDERS ALREADY ACTIVE")
-	
-#	# Update user role database
-#	if not (STATS_MODE):
-#		from billy_roles import dump_roles
-#		dump_roles(client)
-		
 
+	# Update user role database
+
+	if not (STATS_MODE) and roles:
+		roles.init_roles(client)
 
 # Execute on every reaction
 
@@ -440,16 +444,20 @@ async def on_message_delete(message):
 		return
 	
 	sh.debug("User command deleted: " + message.content, message)
-	#sh.debug("message.id : {}".format(message.id))
-	#sh.debug("client.user : {}".format(client.user))
+
+	if DEBUG_MESSAGE_DELETION:
+		sh.debug("message.id : {}".format(message.id))
+		sh.debug("client.user : {}".format(client.user))
 
 	await handle_bot_response_deletion(message)
 	
 async def handle_bot_response_deletion(message):
 	async for log in message.channel.history(limit=50, after=message):
-		#sh.debug("log.author : {}".format(log.author))
-		#sh.debug("log.reference : {}".format(log.reference))
-		#sh.debug("log.reference.message_id : {}".format(log.reference.message_id))
+		if DEBUG_MESSAGE_DELETION:
+			sh.debug("log.author : {}".format(log.author))
+			sh.debug("log.reference : {}".format(log.reference))
+			sh.debug("log.reference.message_id : {}".format(log.reference.message_id))
+
 		if log.author != client.user:
 			sh.debug("Not a bot message - skipped")
 			continue
@@ -471,19 +479,42 @@ async def handle_bot_response_deletion(message):
 
 @client.event
 async def on_member_update(before, after):
-	attribute_list = ["status", "activity", "display_name", "roles", "pending"]
-	changed_attributes = ""
+	# Just for extra debugging
 
-	for attr in attribute_list:
-		if getattr(before, attr) != getattr(after, attr):
-			changed_attributes += attr + ", "
+	if DEBUG_MEMBER_UPDATE:
+		attribute_list = ["status", "activity", "display_name", "roles", "pending"]
+		changed_attributes = ""
 
-	if changed_attributes:
-		changed_attributes = changed_attributes[:-2]
-	else:
-		changed_attributes = "[UNKNOWN?]"
+		for attr in attribute_list:
+			if getattr(before, attr) != getattr(after, attr):
+				changed_attributes += attr + ", "
 
-	sh.debug("{} ({}) changed their profile, specifically: {}".format(after, after.guild.name, changed_attributes))
+		if changed_attributes:
+			changed_attributes = changed_attributes[:-2]
+		else:
+			changed_attributes = "[UNKNOWN?]"
+
+		sh.debug("{} ({}) changed their profile, specifically: {}".format(after, after.guild.name, changed_attributes))
+	
+	# Managing role changes
+
+	if roles:
+		roles.check_for_change(before, after)
+	
+
+# Handle reaction addition
+
+@client.event
+async def on_reaction_add(reaction, member):
+	if member.bot:
+		return
+	
+	users = [user.id async for user in reaction.users()]
+
+	if client.user.id in users:
+		sh.debug("Removing bot reaction")
+		await reaction.remove(client.user)
+
 
 # Handle member join/leave
 

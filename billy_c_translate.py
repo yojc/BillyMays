@@ -5,9 +5,10 @@ import re
 import random
 
 import billy_shared as sh
+from config import REQUESTS_RETRY_COUNT, REQUESTS_TRANSLATE_TIMEOUT
 
 # How many times should the bot retry the query in case an error occurs?
-retry_count = 3
+retry_count = REQUESTS_RETRY_COUNT
 
 def parse_args(msg):
 	in_lang = "auto"
@@ -48,7 +49,7 @@ def translate(text, in_lang='auto', out_lang='en', verify_ssl=True):
 
 	for i in range(retry_count):
 		#print(str(i) + ", " + in_lang + " => " + out_lang)
-		result = requests.get(url, params=query, timeout=9.05, headers=headers,
+		result = requests.get(url, params=query, timeout=REQUESTS_TRANSLATE_TIMEOUT, headers=headers,
 							verify=verify_ssl).text
 
 		if result == '[,,""]':

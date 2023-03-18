@@ -9,7 +9,6 @@ import billy_shared as sh
 # obrazki
 # -------------------------------------
 
-
 async def c_pozdro(client, message):
 	await message.channel.send(file=discord.File(sh.file_path("img/pzdr.jpg")))
 
@@ -31,7 +30,10 @@ c_wiplerine.command = r"(w|v)iplerine"
 
 
 async def c_cogif(client, message):
-	await message.channel.send(file=discord.File(sh.file_path("img/comment_jblSpYCkKHo8hIGeGqLq0xWLjNjfM19j.gif")))
+	if random.random() < 0.1:
+		await message.channel.send(file=discord.File(sh.file_path("img/co.gif")))
+	else:
+		await message.channel.send(file=discord.File(sh.file_path("img/comment_jblSpYCkKHo8hIGeGqLq0xWLjNjfM19j.gif")))
 
 c_cogif.command = r"(co|czo|what)"
 
@@ -307,3 +309,38 @@ async def c_good(client, message):
 	await message.channel.send(file=discord.File(sh.file_path("img/johnny_b_goode.webm")))
 
 c_good.command = r"good"
+
+async def c_mozna(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/a_mozna_jak_najbardziej.png")))
+
+c_mozna.command = r"(mozna|bosak)"
+
+async def c_genialne_rozwiazanie_problemu(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/top_gejas.webm")))
+
+c_genialne_rozwiazanie_problemu.command = r"(genialne|genious|rozwiazanie|solution)"
+
+async def c_trzymansko(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/3 V.png")))
+
+c_trzymansko.command = r"trzymansko"
+
+async def c_smieszne(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/panie_drozda.jpg")))
+
+c_smieszne.command = r"smieszne"
+
+async def c_niesmieszne(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/droyda.jpg")))
+
+c_niesmieszne.command = r"niesmieszne"
+
+async def c_saxx(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/sexx.jpg")))
+
+c_saxx.command = r"saxx"
+
+async def c_hakken_pertoli(client, message):
+	await message.channel.send(file=discord.File(sh.file_path("img/haken pierdaken.png")))
+
+c_hakken_pertoli.command = r"haken"

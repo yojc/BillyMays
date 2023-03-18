@@ -14,50 +14,54 @@ import time
 import billy_shared as sh
 from billy_c_translate import translate
 from billy_c_yojc import c_rimshot as rimshot
+from billy_c_img import c_smieszne as smieszne
+from billy_c_img import c_niesmieszne as niesmieszne
+
 from keys import WOLFRAM_ALPHA_KEY, CLEVERBOT_KEY
+from config import REQUESTS_RETRY_COUNT, REQUESTS_TIMEOUT, REQUESTS_DUMP_GOOGLE_TO_FILE, REQUESTS_DUMP_YOUTUBE_TO_FILE, REQUESTS_HEADERS
+
+# Debug Google request with a file (passed as argument for bot command)
+# Bot must be running in developer mode!
+DEBUG_GOOGLE_FILE = False
 
 # How many times should the bot retry the query in case an error occurs?
-retry_count = 3
+retry_count = REQUESTS_RETRY_COUNT if not sh.testing else 1
 
 cw = CleverWrap(CLEVERBOT_KEY)
 
-headers_Get = {
-	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
-	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-	'Accept-Language': 'en-US,en;q=0.5',
-	'Accept-Encoding': 'gzip, deflate',
-	'DNT': '1',
-	'Connection': 'keep-alive',
-	'Upgrade-Insecure-Requests': '1'
-}
-
-
 def google(q, image=False):
-	s = requests.Session()
-	q = '+'.join(q.split())
-	url = 'https://www.google.com/search?q=' + q + '&ie=utf-8&oe=utf-8'
-	if image == "isch":
-		url += "&tbm=isch"
-	elif image:
-		url += "&tbm=isch&tbs=" + image
+	if sh.testing and DEBUG_GOOGLE_FILE:
+		# For testing logs
+		f = open(q, "r", encoding="utf-8")
+		webpage = f.read()
+	else:
+		s = requests.Session()
+		s.cookies.set("CONSENT", "YES+cb.20220111-10-p0.en+FX+462", domain=".google.com")
+		q = '+'.join(q.split())
+		url = 'https://www.google.com/search?q=' + q + '&ie=utf-8&oe=utf-8'
+		if image == "isch":
+			url += "&tbm=isch"
+		elif image:
+			url += "&tbm=isch&tbs=" + image
+		
+		try:
+			r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
+		except:
+			return False
+		
+		webpage = r.text
+		
+		if sh.testing or REQUESTS_DUMP_GOOGLE_TO_FILE:
+			sh.debug("Dumped server response to {}".format(sh.dump_errlog(webpage, "google")))
 	
-	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
-	except:
-		return False
-	 
-	soup = BeautifulSoup(r.text, "html.parser")
-
-	# For testing logs
-	#f = open("log", "r", encoding="utf-8")
-	#logtext = f.read()
-	#soup = BeautifulSoup(logtext, "html.parser")
+	soup = BeautifulSoup(webpage, "html.parser")
 	
 	if image:
 		search_wrapper = None
 		rules = [{'jsname':'ik8THc'}, {'class':'rg_meta notranslate'}]
 		
 		hack = False
+		new_search_hack = False
 		
 		for rule in rules:
 			sh.debug("Checking rule")
@@ -75,45 +79,136 @@ def google(q, image=False):
 
 				for index in indexes:
 					sh.debug("Checking index " + str(index))
-					json_text = re.sub("AF_initDataCallback.*?data:(function\(\){return)?", "", search_wrapper[index].string).strip()
-					json_text = re.sub("(, sideChannel.*?)?}.*?$", "", json_text).strip()
 
-					if sh.is_json(json_text) and len(json.loads(json_text)) > 30:
-						sh.debug("First match")
-						if len(json.loads(json_text)[31]) > 0:
-							sh.debug("Second match")
-							search_wrapper = json.loads(json_text)[31][0][12][2]
+					#if DEBUG_GOOGLE_FILE:
+					#	sh.debug("----- ----- -----")
+					#	sh.debug(search_wrapper[index])
+					#	sh.debug("----- ----- -----")
+					
+					json_text = re.sub("AF_initDataCallback.*?data:(function\(\){return)?", "", search_wrapper[index].string or "").strip()
+					json_text = re.sub("(, sideChannel.*?)}.*?$", "", json_text).strip()
+
+					if not sh.is_json(json_text):
+						sh.debug("Not a valid JSON")
+						continue
+					
+					json_result = json.loads(json_text)
+
+					if len(json_result) > 30:
+						sh.debug("Trying old method")
+						if json_result[31] and len(json_result[31]) > 0:
+							sh.debug("Old method worked")
+
+							for arr in json_result[31]:
+								if len(arr) > 8 and arr[7] == "b-TOP_PLA":
+									continue
+								else:
+									search_wrapper = arr[12][2]
+									break
+							
 							break
 						else:
-							sh.debug("Second match failed")
-							return False
+							sh.debug("Old method failed, trying something else")
+							new_search_hack = True
+
+							if json_result[56] and len(json_result[56]) > 0:
+								search_wrapper = []
+								magic_number = "444383007"
+
+								preprocessed_string = ""
+								bracket_counter = 0
+
+								inside_string_flag = False
+								previous_char = None
+
+								for char in json.dumps(json_result[56]):
+									if char == "\"" and previous_char != "\\":
+										#sh.debug("Changing string state")
+										inside_string_flag = not inside_string_flag
+										preprocessed_string += char
+									elif inside_string_flag: 
+										#sh.debug("Inside string")
+										preprocessed_string += char
+									elif char == "{":
+										#sh.debug("Starting bracket")
+										bracket_counter += 1
+										if bracket_counter == 1:
+											preprocessed_string += "!STARTING_BRACKET!{"
+										else:
+											preprocessed_string += "{"
+									elif char == "}":
+										#sh.debug("Closing bracket")
+										bracket_counter -= 1
+										if bracket_counter == 0:
+											preprocessed_string += "}!ENDING_BRACKET!"
+										else:
+											preprocessed_string += "}"
+									else:
+										#sh.debug(char)
+										preprocessed_string += char
+									
+									previous_char = char
+
+								raw_dicts = re.findall("!STARTING_BRACKET!.+?!ENDING_BRACKET!", preprocessed_string)
+
+								for result_dict in raw_dicts:
+									sh.debug("----- ----- -----")
+									sh.debug(re.sub("!(STARTING|ENDING)_BRACKET!", "", result_dict))
+									sh.debug("----- ----- -----")
+
+									dict_json = json.loads(re.sub("!(STARTING|ENDING)_BRACKET!", "", result_dict))
+
+									if magic_number not in dict_json:
+										sh.debug("Magic number not found")
+									elif dict_json[magic_number] and dict_json[magic_number][1] and dict_json[magic_number][1][3] and dict_json[magic_number][1][3][0]:
+										sh.debug("It's a result: {}".format(dict_json[magic_number][1][3][0]))
+										search_wrapper.append(dict_json[magic_number][1][3][0])
+									else:
+										sh.debug("Magic number found, but something else is wrong")
+								
+							break
 					else:
 						if index == indexes[-1]:
 							sh.debug("Last element reached")
-							return r.text
-						elif not sh.is_json(json_text):
-							sh.debug("Not a valid JSON")
-							continue
+							return webpage
 						else:
-							sh.debug("Too short: " + len(json.loads(json_text)))
+							sh.debug("Too short: {}".format(len(json.loads(json_text))))
 							continue
 			except IndexError:
-				sh.debug("IndexError")
-				return r.text
+				sh.debug("An IndexError occurred!")
+				return webpage
 		
 		url = None
 		
 		for result_img in search_wrapper:
 			tmp = ""
 		
-			if hack:
-				if result_img[0] == 2:
+			if new_search_hack:
+				if result_img[0] != "h":
 					continue
-				tmp = result_img[1][3][0]
+				
+				if DEBUG_GOOGLE_FILE:
+					sh.debug("result_img: {}".format(result_img))
+				
+				tmp = result_img
+			elif hack:
+				if DEBUG_GOOGLE_FILE:
+					sh.debug("result_img[0]: {}".format(result_img[0]))
+
+				if result_img[0] != 1:
+					continue
+				
+				if DEBUG_GOOGLE_FILE:
+					sh.debug("result_img: {}".format(result_img))
+				
+				try:
+					tmp = result_img[1][3][0]
+				except:
+					sh.warn("Google image search failure, dumped server response to {}".format(sh.dump_errlog(webpage, "google")))
 			else:
 				tmp = json.loads(result_img.string.strip())["ou"]
 			
-			banned_terms = ["x-raw-image", "lookaside.fbsbx.com", ".svg", "cdninstagram", "archiwum.allegro"]
+			banned_terms = ["x-raw-image", "lookaside.fbsbx.com", ".svg", "cdninstagram", "archiwum.allegro", "lifesize.com", "tiktok.com"]
 			
 			if any(term in tmp for term in banned_terms):
 				sh.debug("This image comes from a blacklisted URL")
@@ -199,19 +294,20 @@ def yt(q):
 	q = '+'.join(q.split())
 	url = 'https://www.youtube.com/results?search_query=' + q + '&sp=EgIQAQ%253D%253D'
 	
-	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
+	try:	
+		r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 	except:
 		return False
 
-	sh.dump_errlog(r.text)
+	if sh.testing or REQUESTS_DUMP_YOUTUBE_TO_FILE:
+		sh.debug("Dumped server response to {}".format(sh.dump_errlog(r.text, "youtube")))
 	
-	regex = r'\\\"videoId\\\"\:\\\"(\S+?)\\\"'
+	regex = r'\{\"videoRenderer\"\:\{\"videoId\"\:\"(\S+?)\"'
 	ret = re.search(regex, r.text)
 
 	if ret is None:
 		sh.debug("First regex failed")
-		regex = r'\"videoId\"\:\"(\S+?)\"'
+		regex = r'\\\{\\\"videoRenderer\\\"\\\:\\\{\\\"videoId\\\"\\\:\\\"(\S+?)\\\"'
 		ret = re.search(regex, r.text)
 	
 	if ret is not None:
@@ -226,17 +322,26 @@ def yt(q):
 
 def numerki(q):
 	s = requests.Session()
+	s.cookies.set("cf_clearance", "34235b3c0c6639f951778a335e3c39bdd6827580-1666707106-0-150", domain=".nhentai.net")
+	s.cookies.set("csrftoken", "2DqJTamPd9HIWuqfqvKFAT28DWB6GC979aP1cK9PJFrBm22Ta0DstDssDGd7Scly", domain="nhentai.net")
 	url = 'https://www.nhentai.net/g/' + q + '/'
+
+	sh.debug("Fetching numerki from {}".format(url))
 	
 	try:
-		r = s.get(url, timeout=12.05)
+		r = s.get(url, timeout=REQUESTS_TIMEOUT)
 	except:
+		sh.debug("OBJECTION!")
 		return False
+	
+	if sh.testing:
+		sh.debug("Dumped server response to {}".format(sh.dump_errlog(r.text, "numerki")))
 		
 	parsed = BeautifulSoup(r.text, "html.parser")
 	tagi = []
 	
 	for spa in parsed.find_all('span', {'class': 'tags'}):
+		sh.debug("Found tag {}".format(spa.text.strip()))
 		tagi.append(spa.text.strip())
 	
 	while("" in tagi): 
@@ -256,7 +361,7 @@ def tumblr_random(q):
 	url = 'http://'+q+'.tumblr.com/random'
 	
 	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
+		r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 		if r.url == url:
 			return False
 		else:
@@ -272,7 +377,7 @@ def suchar():
 	url = 'http://piszsuchary.pl/losuj'
 	
 	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
+		r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 	except:
 		return False
 	
@@ -290,7 +395,7 @@ def cytat():
 	url = 'http://www.losowe.pl/'
 	
 	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
+		r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 	except:
 		return False
 	
@@ -309,28 +414,28 @@ def bzdur():
 	def joke():
 		url = "https://geek-jokes.sameerkumar.website/api"
 		try:
-			r = s.get(url, headers = headers_Get, timeout=12.05)
+			r = s.get(url, headers = REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 		except:
 			return None
 		return r.text.strip()[1:-1]
 	def basically():
 		url = "http://itsthisforthat.com/api.php?text"
 		try:
-			r = s.get(url, headers = headers_Get, timeout=12.05)
+			r = s.get(url, headers = REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 		except:
 			return None
 		return r.text.strip()
 	def business():
 		url = "https://corporatebs-generator.sameerkumar.website/"
 		try:
-			r = s.get(url, headers = headers_Get, timeout=12.05)
+			r = s.get(url, headers = REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 		except:
 			return None
 		return json.loads(r.text)["phrase"]
 	def advice():
 		url = "https://api.adviceslip.com/advice"
 		try:
-			r = s.get(url, headers = headers_Get, timeout=12.05)
+			r = s.get(url, headers = REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 		except:
 			return None
 		return json.loads(r.text)["slip"]["advice"]
@@ -342,7 +447,7 @@ def bash():
 	url = 'http://www.losowe.pl/'
 	
 	try:
-		r = s.get(url, headers=headers_Get, timeout=12.05)
+		r = s.get(url, headers=REQUESTS_HEADERS, timeout=REQUESTS_TIMEOUT)
 	except:
 		return False
 	
@@ -368,7 +473,7 @@ async def c_google(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_google"))
 	elif not result:
 		await message.reply("Brak wyników, albo Google się zesrało.")
 	else:
@@ -388,7 +493,7 @@ async def c_wyjasnij(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_wyjasnij"))
 	elif not result:
 		await message.reply("Brak wyników, albo Google się zesrało.")
 	else:
@@ -408,7 +513,7 @@ async def c_google_image(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_google_image"))
 	elif not result:
 		await message.reply("Brak wyników, albo Google się zesrało.")
 	else:
@@ -429,7 +534,7 @@ async def c_google_image_clipart(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_google_image_clipart"))
 	elif not result:
 		await message.reply("Brak wyników, albo Google się zesrało.")
 	else:
@@ -450,7 +555,7 @@ async def c_google_image_face(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_google_image_clipart"))
 	elif not result:
 		await message.reply("Brzydal")
 	else:
@@ -471,7 +576,7 @@ async def c_google_image_gif(client, message):
 			break
 	
 	if isinstance(result, str):
-		await message.channel.send(sh.dump_errlog_msg(result))
+		await message.channel.send(sh.dump_errlog_msg(result, "c_google_image_gif"))
 	elif not result:
 		await message.reply("Brak wyników, albo Google się zesrało.")
 	else:
@@ -601,8 +706,13 @@ async def c_suchar(client, message):
 		await message.channel.send("jogurt")
 	else:
 		await message.channel.send(result)
-		if random.random() < 0.4:
-			await rimshot(client, message)
+		if random.random() < 0.25:
+			if random.random() < 0.33:
+				await smieszne(client, message)
+			elif random.random() < 0.5:
+				await niesmieszne(client, message)
+			else:
+				await rimshot(client, message)
 
 c_suchar.command = r"(suchar|martius)"
 c_suchar.desc = "śmiej się razem z nami!"
